@@ -4,7 +4,7 @@ Watershed: NULL
 Date this Input File Created: NULL
 *** HSPF Information
 MUTSIN Start Year: NULL
-MUTSIN End Year: Null
+MUTSIN End Year: NULL
 HSPF-Sup File Header Number for Pasture in MON-ACCUM Table:  NULL
 HSPF-Sup File Header Number for Pasture in MON-SQOLIM Table: NULL
 HSPF-Sup File Header Number for Forest in MON-ACCUM Table:   NULL
