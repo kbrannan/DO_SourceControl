@@ -1,7 +1,7 @@
 *** Cow-Calf Bacteria Source Model Input File
 *** Gerneral Information
 Watershed: Upper Yaquina River
-Date this Input File Created: 2017-02-08
+Date this Input File Created: 2017-02-09
 *** HSPF Information
 MUTSIN Start Year: 2015
 MUTSIN End Year: 2016
