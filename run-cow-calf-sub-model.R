@@ -1,5 +1,8 @@
 
-library(data.table)
+library(data.table, quietly = TRUE)
+library(reshape2, quietly = TRUE)
+library(gtable, quietly = TRUE)
+library(gridExtra, quietly = TRUE)
 
 source(paste0(chr.dir.sub.models.cow.calf, "/", chr.file.R.cow.calf))
 
@@ -86,27 +89,80 @@ for(jj in 1:length(vec.subs)) {
   rm(chr.input.temp.tpl, kk)  
 }
 
+## run cow.calf model for all sub watersheds
 lst.tmp <- lapply(chr.files.input, cow.calf)
+## convert data.frames from cow.calf model to data.tables
 lst.out <- lapply(lst.tmp, data.table)
+## clean up
+rm(lst.tmp)
 
-str(junk)
+## asssemble output for report to Tetra Tech
+lst.summary.dt.cowcalf <- vector('list', length(vec.subs))
+## set names of the summary data.tables
+names(lst.summary.dt.cowcalf) <- paste0("sub", sprintf(fmt = "%02i", vec.subs))
+for(ii in 1:length(vec.subs)) {
+  dt.cur <- lst.out[[ii]]
+  chr.drop.cols <- names(dt.cur)[(grep("(Bacteria)|(Accum\\.)|(Lim\\.)", names(dt.cur)))]
+  dt.in <- dt.cur[ , !chr.drop.cols, with=FALSE]
+  lst.summary.dt.cowcalf[[ii]] <- cbind(sub = ii, summarize.out(dt.in))
+  rm(dt.cur, chr.drop.cols, dt.in)
+}
 
-junk <- lst.out[[1]]
+dt.summary <- do.call(rbind, lst.summary.dt.cowcalf)
 
-junk[Month == "Jan", ]
+dt.sum <- dt.summary
+dt.sum$cat <- gsub("^confinement", "AU-confinement", dt.sum$cat)
+dt.sum$cat <- gsub("^pasture", "AU-pasture", dt.sum$cat)
+dt.sum$cat <- gsub("^forest", "AU-forest", dt.sum$cat)
+dt.sum$cat <- gsub("^stream", "AU-stream", dt.sum$cat)
 
-junk[, names(junk)[-1 * 1:max(grep("pairs", names(junk)))]:=NULL]
+dt.sum$cat <- factor(dt.sum$cat, 
+                     levels = c("AU-pasture", "AU-forest","AU-stream",
+                                "AU-confinement", "total-AU", "total-pairs"))
 
-int.pasture.onland <- c(4,5)
+dt.summary <- dt.sum
+rm(dt.sum)
 
-junk[ int.pasture.onland]
 
-eval(parse(text = names(junk)[int.pasture.onland]))
+write.csv(dt.summary, 
+          file = paste0(chr.dir.sub.models.cow.calf, "/summary-out-cow-calf.csv"),
+          row.names = FALSE)
 
-junk[sum(pairs.OnPastureWOStreamAccess), by=Month]
 
-str(junk[2,])
 
-junk[, lapply(grep("pairs", names(junk)), sum), ]
+maxrow = 12; 
+int.n.rows <- nrow(dt.summary)
+npages = ceiling(int.n.rows/maxrow)
 
-junk[, lapply(.SD, add), by=Month, .SDcols=names(junk)[int.pasture.onland]]
+pdf(file = paste0(chr.dir.sub.models.cow.calf, "/summary-out-cow-calf.pdf"),
+    height = 8.5, width = 11, onefile = TRUE)
+
+
+for (i in 1:npages) {
+  idx = seq(1+((i-1)*maxrow), i*maxrow)
+  idx <- idx[idx <= int.n.rows]
+  grid.newpage()
+  
+  tmp.table <- tableGrob(
+    dt.summary[idx, ], show.rownames = FALSE,
+    gpar.coretext =gpar(fontsize=10),
+    gpar.coltext=gpar(fontsize=10, fontface='bold'),
+    y = unit(0.1, "npc"),
+    vjust = 2
+  )
+  tmp.h <- grobHeight(tmp.table)
+  tmp.w <- grobWidth(tmp.table)
+  if(i == 1) {
+    tmp.label <- "cow-calf AU across locations by sub-watershed and month"  
+  } else {
+    tmp.label <- "cow-calf AU across locations by sub-watershed and month (continued)"
+  }
+  tmp.title <- textGrob(label = tmp.label,
+                        y=unit(0.5,"npc") + 0.5*tmp.h, 
+                        vjust=0, gp=gpar(fontsize=20))
+  tmp.gt <- gTree(children=gList(tmp.table, tmp.title)) 
+  grid.draw(tmp.gt)
+}
+
+dev.off()
+
